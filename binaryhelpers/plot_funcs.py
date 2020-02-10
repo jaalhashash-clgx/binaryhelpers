@@ -7,6 +7,7 @@ from sklearn.metrics import precision_recall_curve
 from sklearn.metrics import average_precision_score
 from sklearn.metrics import roc_auc_score
 from sklearn.metrics import roc_curve
+from sklearn.metrics import auc
 import matplotlib.patches as mpatches
 from model_building_helpers import analyze_multiple_models
 import pandas as pd
@@ -170,7 +171,7 @@ def plot_precision_recall(y_actual,y_perc,add_avg = False,add_fill=False,ax=Fals
         return ax
     
 def plot_roc_curve(y_actual,y_perc,add_chance=True,add_fill=False,ax=False,**plot_kwargs):
-    auc = roc_auc_score(y_actual,y_perc)
+    roc_auc = roc_auc_score(y_actual,y_perc)
     prec_rc = pd.concat([pd.Series(val) for val in roc_curve(y_actual,y_perc)],axis=1)
     prec_rc.columns = ['False Positive rate','True Positive Rate','threshold']
     if prec_rc.shape[0]>100000:
@@ -182,7 +183,7 @@ def plot_roc_curve(y_actual,y_perc,add_chance=True,add_fill=False,ax=False,**plo
     if not ax:
         fig, ax = plt.subplots(figsize=(10,10))
     sns.lineplot(x='False Positive rate',y='True Positive Rate',data=plot_data,ax=ax,**plot_kwargs)
-    ax.set_title("ROC Curve:  AUC = {0:0.3f}".format(auc),fontsize=20)
+    ax.set_title("ROC Curve:  AUC = {0:0.3f}".format(roc_auc),fontsize=20)
     ax.set_xlim(0,1)
     ax.set_ylim(0,1)
     if add_fill:
@@ -227,7 +228,71 @@ def plot_perc_lift(y_actual,y_perc,split_num=False,add_baseline = False,ax=False
         return fig,ax
     else:
         return ax
+def plot_cum_gains(y_actual,y_perc,add_thresh=False,ax=None,return_auc=True,title = "Model Performance: Cumulative Gains",div=1000,add_chance = True,**kwargs):
+    data = pd.concat([y_actual,y_perc],axis=1)
+    data.columns = ['y_actual','y_perc']
+    data['Rank'] = data['y_perc'].rank()
+    target_data = data[['y_actual','Rank']].sort_values(by='Rank',ascending=False).reset_index(drop=True)
+    target_data['CUM_PERC'] = target_data['y_actual'].cumsum()/target_data['y_actual'].sum()
+    target_data['PERC_TOTAL'] = (target_data.index+1)/target_data.shape[0]
+    sns.set_style("whitegrid")
+    formatter = FuncFormatter(lambda y, pos:"%d%%" % (y*100))
+    if return_auc:
+        auc_score = auc(target_data['PERC_TOTAL'],target_data['CUM_PERC'])
+    if not ax:
+        needs_ax = True
+        fig,ax = plt.subplots(figsize=(15,10))
+    else:
+        needs_ax = False
+    sns.lineplot(x='PERC_TOTAL',y='CUM_PERC',data=target_data.iloc[::div, :],ax=ax,**kwargs)
+    ax.yaxis.set_major_formatter(formatter)
+    ax.xaxis.set_major_formatter(formatter)
+    if add_thresh:
+        threshes = [target_data[target_data['PERC_TOTAL'].round(2)==thresh]['CUM_PERC'].values.mean().round(2) for thresh in add_thresh]
+
+
+    xticks =list((np.arange(10)+1)/4)
     
+    if add_thresh:
+        xticks = sorted(set(xticks+add_thresh))
+    ax.set_xticks(xticks)
+    if add_thresh:
+        ticks = sorted([.25,.5]+threshes)
+        ax.set_yticks(ticks)
+    else:
+        ax.set_yticks((np.arange(10)+1)/4)
+    ax.xaxis.set_tick_params(labelsize=14)
+    ax.yaxis.set_tick_params(labelsize=14)
+    ax.set_ylim((0,1))
+    ax.set_xlim((0,1))
+    ax.set_ylabel("Percent Targets Captured",fontsize=18)
+    ax.set_xlabel('Percent of Population',fontsize=18)
+    ax.set_title(title,fontsize=20)
+    if add_chance:
+        ax.plot([0, 1], [0, 1], linestyle='--', lw=2, color='r',
+        label='Chance', alpha=.8)
+    ax.grid(False)
+
+    if add_thresh:
+        for x,y in zip(add_thresh,threshes):
+            ax.axvline(x,0,y,linestyle='--',linewidth=2,color='orange')
+            ax.axhline(y,0,x,linestyle='--',linewidth=2,color='orange')
+        i=0
+        for tick in ax.yaxis.get_major_ticks():
+            if ticks[i] in threshes:
+                tick.label1.set_fontsize(20)
+                tick.label1.set_fontweight('bold')
+            i+=1
+
+    if needs_ax:
+        if return_auc:
+            return fig,ax,auc_score
+        else:
+            return fig,ax
+    else:
+        if return_auc:
+            return auc_score
+                
 def compare_models(xlsx,model_dict = False,colors = False,return_figs = False,**model_kwargs):
 
     ## Compares multiple models and returns a dictionary as well as the 3 curves comparing them.
@@ -236,6 +301,7 @@ def compare_models(xlsx,model_dict = False,colors = False,return_figs = False,**
             xlsx: the excel file you wish to save your data to, supply false if you don't want to save data output
             model_dict: optional supply of a existing model dictionary that contains specified necessary information about the model (minimum is model_dict[model][x][solutions_pred])
             colors: colors you want to use for your plots, if not supplied will use random colors
+            plots: what plots you want for your comparison
             return_figs: whether or not to return the figs for your plots
             **model_kwargs: kwarges to pass into analyze multiple models the wrapper around analyze_insp_opt that does all the work to train the model and generate anlaysis data
         returns:
@@ -265,12 +331,16 @@ def compare_models(xlsx,model_dict = False,colors = False,return_figs = False,**
             for target in model_dict[item].keys():
                 solutions_pred_dict['{}-{}'.format(item,target)] = model_dict[item][target]['solutions_pred']
     cnt = len(solutions_pred_dict)
+    ##TODO: We want to be able to specify the plots we want in our comparison.  this will be based on the optional argument plots='all'.
+    ## For now we will plot all 4 plots (ROC_AUC,PRECISION_RECALL,LIFT, CUM_GAINS)
     fig, ax = plt.subplots(figsize=(10,10))
     fig2,ax2 = plt.subplots(figsize=(10,10))
     fig3,ax3 = plt.subplots(figsize=(10,10))
+    fig4,ax4 = plt.subplots(figsize=(10,10))
     patches1 = []
     patches2 = []
     patches3 = []
+    patches4 = []
     if not colors:
         colors = ["#"+''.join([('0123456789ABCDEF')[np.random.randint(0,16)] for j in range(6)])
              for i in range(cnt)]
@@ -279,26 +349,30 @@ def compare_models(xlsx,model_dict = False,colors = False,return_figs = False,**
         y_actual=solutions_pred_dict[key]['y_actual']
         y_perc = solutions_pred_dict[key]['y_perc']
         
-        auc =roc_auc_score(y_actual,y_perc)
+        roc_auc =roc_auc_score(y_actual,y_perc)
         apr = average_precision_score(y_actual,y_perc)
         patches1.append(mpatches.Patch(color=colors[i],label=key.replace('Classifier','')))
-        patches2.append(mpatches.Patch(color=colors[i],label='{}: AUC={:,.3f}'.format(key.replace('Classifier',''),auc)))
+        patches2.append(mpatches.Patch(color=colors[i],label='{}: AUC={:,.3f}'.format(key.replace('Classifier',''),roc_auc)))
         patches3.append(mpatches.Patch(color=colors[i],label='{}: MAP={:,.3f}'.format(key.replace('Classifier',''),apr)))
         plot_perc_lift(y_actual,y_perc,add_baseline=True,linewidth=2,color=colors[i],ax=ax)
         plot_roc_curve(y_actual,y_perc,add_chance=True,linewidth=2,color=colors[i],ax=ax2)
         plot_precision_recall(y_actual,y_perc,add_avg=False,linewidth=2,color=colors[i],ax=ax3)
+        auc_score = plot_cum_gains(y_actual,y_perc,color = colors[i],ax=ax4)
+        patches4.append(mpatches.Patch(color=colors[i],label='{}: AUC={:,.3f}'.format(key.replace('Classifier',''),auc_score)))
         i+=1
         
-    
+    ax4.legend(handles=patches4,title='Model Performance',title_fontsize=20)
+    ax4.set_title("Cumulative Gains Model Comparison")
     ax3.legend(handles=patches3,title='Model Performance',title_fontsize=20)
     ax3.set_title("Precision Recall Model Comparison")
     ax2.legend(handles=patches2,title='Model Performance',title_fontsize=20)
     ax2.set_title('ROC Curve Model Comparison')
     ax.legend(handles=patches1, title='Model Performance',title_fontsize=20)
     if return_figs:
-        return model_dict, (fig,fig2,fig3)
+        return model_dict, (fig,fig2,fig3,fig4)
     else:
         return model_dict
+
 
 def look_at_models(data,target,score_list=None,plots_only=True,return_figs=False,**compare_model_kwargs):
 

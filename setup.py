@@ -1,7 +1,7 @@
 from setuptools import setup
 
 setup(name='binaryhelpers',
-      version='0.1',
+      version='0.3',
       description='helper functions that can be used for binary classifiers',
       author='Jawsem',
       author_email='jaalhashash@corelogic.com',
