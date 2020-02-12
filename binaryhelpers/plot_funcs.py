@@ -241,7 +241,7 @@ def plot_cum_gains(y_actual,y_perc,add_thresh=False,ax=None,return_auc=True,titl
         auc_score = auc(target_data['PERC_TOTAL'],target_data['CUM_PERC'])
     if not ax:
         needs_ax = True
-        fig,ax = plt.subplots(figsize=(15,10))
+        fig,ax = plt.subplots(figsize=(15,15))
     else:
         needs_ax = False
     sns.lineplot(x='PERC_TOTAL',y='CUM_PERC',data=target_data.iloc[::div, :],ax=ax,**kwargs)
