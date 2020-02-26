@@ -196,21 +196,25 @@ def plot_roc_curve(y_actual,y_perc,add_chance=True,add_fill=False,ax=False,**plo
     else:
         return ax
     
-def plot_perc_lift(y_actual,y_perc,split_num=False,add_baseline = False,ax=False,**plot_kwargs):
-    base_perc = y_actual.mean()
-    df = pd.concat([y_actual,y_perc],axis=1)
-    df.columns = ['y_actual','y_perc']
-    df = df.sort_values(by='y_perc',ascending=False).reset_index(drop=True)
-    if not split_num:
-        if df.shape[0]>100000:
-            split_num=1000
-        elif df.shape[0]>5000:
-            split_num=100
-        else:
-            split_num=10
-    means = [df.iloc[:i]['y_actual'].mean() for i in range(split_num,df.shape[0],split_num)]
-    lifts = [mean/base_perc for mean in means]
-    perc = [i/df.shape[0] for i in range(split_num,df.shape[0],split_num)]
+def plot_perc_lift(y_actual,y_perc,use_scores=False,split_num=False,add_baseline = False,ax=False,**plot_kwargs):
+    if use_scores:
+        base_perc = y_actual.mean()
+        df = pd.concat([y_actual,y_perc],axis=1)
+        df.columns = ['y_actual','y_perc']
+        df = df.sort_values(by='y_perc',ascending=False).reset_index(drop=True)
+        if not split_num:
+            if df.shape[0]>100000:
+                split_num=1000
+            elif df.shape[0]>5000:
+                split_num=100
+            else:
+                split_num=10
+        means = [df.iloc[:i]['y_actual'].mean() for i in range(split_num,df.shape[0],split_num)]
+        lifts = [mean/base_perc for mean in means]
+        perc = [i/df.shape[0] for i in range(split_num,df.shape[0],split_num)]
+    else:
+        perc = y_actual
+        lifts = y_perc
     if not ax:
         fig, ax = plt.subplots(figsize=(10,10))     
     sns.lineplot(x=perc,y=lifts,ax=ax,**plot_kwargs)
@@ -219,7 +223,7 @@ def plot_perc_lift(y_actual,y_perc,split_num=False,add_baseline = False,ax=False
     ax.set_xlim(0,1)
     ax.set_ylim(0.8,max(lifts)+.1)
     ax.set_yticks([i for i in np.arange(1,max(lifts)+.1,.2)])
-    ax.set_xlabel("Percent of Book")
+    ax.set_xlabel("Percent of Population")
     ax.set_ylabel("Lift over Average")
     ax.set_title("Lift Chart",fontsize=20)
     vals = ax.get_xticks()
@@ -228,13 +232,17 @@ def plot_perc_lift(y_actual,y_perc,split_num=False,add_baseline = False,ax=False
         return fig,ax
     else:
         return ax
-def plot_cum_gains(y_actual,y_perc,add_thresh=False,ax=None,return_auc=True,title = "Model Performance: Cumulative Gains",div=1000,add_chance = True,**kwargs):
-    data = pd.concat([y_actual,y_perc],axis=1)
-    data.columns = ['y_actual','y_perc']
-    data['Rank'] = data['y_perc'].rank()
-    target_data = data[['y_actual','Rank']].sort_values(by='Rank',ascending=False).reset_index(drop=True)
-    target_data['CUM_PERC'] = target_data['y_actual'].cumsum()/target_data['y_actual'].sum()
-    target_data['PERC_TOTAL'] = (target_data.index+1)/target_data.shape[0]
+def plot_cum_gains(y_actual,y_perc,cum_perc=False,add_thresh=False,ax=None,return_auc=True,title = "Model Performance: Cumulative Gains",div=1000,add_chance = True,**kwargs):
+    if not cum_perc:
+        data = pd.concat([y_actual,y_perc],axis=1)
+        data.columns = ['y_actual','y_perc']
+        data['Rank'] = data['y_perc'].rank()
+        target_data = data[['y_actual','Rank']].sort_values(by='Rank',ascending=False).reset_index(drop=True)
+        target_data['CUM_PERC'] = target_data['y_actual'].cumsum()/target_data['y_actual'].sum()
+        target_data['PERC_TOTAL'] = (target_data.index+1)/target_data.shape[0]
+    else:
+        target_data = pd.concat([y_actual,y_perc],axis=1)
+        target_data.columns = ['PERC_TOTAL','CUM_PERC']
     sns.set_style("whitegrid")
     formatter = FuncFormatter(lambda y, pos:"%d%%" % (y*100))
     if return_auc:
