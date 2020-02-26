@@ -194,7 +194,7 @@ def create_ar_curve(data,results_rows=101, output_var="model_output",target_var=
     results['precision'] = results['hazards']/results['inspections']
     results['lift'] = results['precision']/results['precision'][0]-1
     
-    results = results.applymap(lambda x: np.round(x,3))
+    # results = results.applymap(lambda x: np.round(x,3))
     return results
 def model_scores(y_val,X_val,classifier,folds=5,insp_cost=30, loss_avoidance=350, return_solutions = False,fit_params={}):
     predictions = np.array(get_scores(X_val,y_val,classifier,folds))
