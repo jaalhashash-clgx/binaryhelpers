@@ -362,7 +362,7 @@ def compare_models(xlsx,model_dict = False,colors = False,return_figs = False,**
         patches1.append(mpatches.Patch(color=colors[i],label=key.replace('Classifier','')))
         patches2.append(mpatches.Patch(color=colors[i],label='{}: AUC={:,.3f}'.format(key.replace('Classifier',''),roc_auc)))
         patches3.append(mpatches.Patch(color=colors[i],label='{}: MAP={:,.3f}'.format(key.replace('Classifier',''),apr)))
-        plot_perc_lift(y_actual,y_perc,add_baseline=True,linewidth=2,color=colors[i],ax=ax)
+        plot_perc_lift(y_actual,y_perc,use_scores=True,add_baseline=True,linewidth=2,color=colors[i],ax=ax)
         plot_roc_curve(y_actual,y_perc,add_chance=True,linewidth=2,color=colors[i],ax=ax2)
         plot_precision_recall(y_actual,y_perc,add_avg=False,linewidth=2,color=colors[i],ax=ax3)
         auc_score = plot_cum_gains(y_actual,y_perc,color = colors[i],ax=ax4)
