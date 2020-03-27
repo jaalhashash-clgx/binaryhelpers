@@ -505,12 +505,17 @@ def add_bin_col(data, col, bins=5):
 #       if key not in ['solutions_pred','estimators','X_vars']:
 #           for item in item_list:
 
-def create_ar_df(data, field, target_field, by=.01):
+def create_lift_gains(data, pred, target, by=.01):
     df = pd.DataFrame()
     df['percentiles'] = np.arange(0,1,by)
-    df['values_{}'.format(field)] = data[field].quantile(percentiles).values
-    df['target_{}'.format(target_field)] = df['values_{}'.format(field)].apply(lambda x: data[data[field]>x][target_field].mean())
-    return df
+    df['values'] = data[pred].quantile(df['percentiles']).values
+    df['percentiles'] = 1- df['percentiles']
+    df['N Obs'] = df['values'].apply(lambda x: (data[pred]>=x).sum())
+    df['targets'] = df['values'].apply(lambda x: data[data[pred]>=x][target].sum())
+    df['target_mean'] = df['targets']/df['N Obs']
+    df['Lift'] = df['target_mean']/df['target_mean'].min()
+    df['Gains'] = df['targets']/df['targets'].max()
+    return df.sort_values(by='percentiles').reset_index(drop=True)
 
 def address_vif(X_values,vif_threshold=5):
     X_vals = add_constant(X_values)

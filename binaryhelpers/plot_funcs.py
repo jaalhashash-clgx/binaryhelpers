@@ -243,6 +243,7 @@ def plot_cum_gains(y_actual,y_perc,cum_perc=False,add_thresh=False,ax=None,retur
     else:
         target_data = pd.concat([y_actual,y_perc],axis=1)
         target_data.columns = ['PERC_TOTAL','CUM_PERC']
+        div = 1
     sns.set_style("whitegrid")
     formatter = FuncFormatter(lambda y, pos:"%d%%" % (y*100))
     if return_auc:
