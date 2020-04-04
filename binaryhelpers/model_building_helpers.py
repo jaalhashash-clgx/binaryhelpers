@@ -499,23 +499,31 @@ def add_bin_col(data, col, bins=5):
         new_bin_data = pd.qcut(data[col], bins, labels=labels)
 
     return new_bin_data
-# def write_multiple_model_data(model_dicts,path = os.getcwd()):
-#   item_list = [model_dicts.keys()]
-#   for key in model_dicts[item_list[0]].keys():
-#       if key not in ['solutions_pred','estimators','X_vars']:
-#           for item in item_list:
 
-def create_lift_gains(data, pred, target, by=.01):
-    df = pd.DataFrame()
-    df['percentiles'] = np.arange(0,1,by)
-    df['values'] = data[pred].quantile(df['percentiles']).values
-    df['percentiles'] = 1- df['percentiles']
-    df['N Obs'] = df['values'].apply(lambda x: (data[pred]>=x).sum())
-    df['targets'] = df['values'].apply(lambda x: data[data[pred]>=x][target].sum())
-    df['target_mean'] = df['targets']/df['N Obs']
-    df['Lift'] = df['target_mean']/df['target_mean'].min()
-    df['Gains'] = df['targets']/df['targets'].max()
-    return df.sort_values(by='percentiles').reset_index(drop=True)
+
+def create_lift_gains(data,pred,target,split=100,labels=False):
+    if isinstance(split,list):
+        if not labels:
+            data['split'] = pd.cut(data[pred],bins=split,right=False,include_lowest=True)
+        else:
+            data['split'] = pd.cut(data[pred],bins=split,labels=labels,right=False,include_lowest=True)
+    else:
+        data['split'] = pd.qcut(data[pred],split)
+    new_df = data.groupby('split').agg({target:['sum','count']})
+    new_df.columns = ['_'.join(x) for x in new_df.columns.ravel()]
+    new_df.columns = ['N Targets', 'N Obs']
+    new_df['Perc Targets'] = new_df['N Obs']/new_df['N Obs'].sum()
+    new_df.sort_index(ascending=False, inplace=True)
+    new_df['percentiles'] = new_df['Perc Targets'].cumsum()
+    new_df['Cumulative Obs'] = new_df['N Obs'].cumsum()
+    new_df['Cumulative Targets'] = new_df['N Targets'].cumsum()
+    new_df['Target Dist'] = new_df['N Targets']/new_df['N Obs']
+    new_df['Non Target Dist'] = 1 - new_df['Target Dist']
+    new_df['Non Target Gains'] = (new_df['N Obs']-new_df['N Targets']).cumsum()/(new_df['N Obs']-new_df['N Targets']).cumsum().max()
+    new_df['Gains'] = new_df['Cumulative Targets']/new_df['Cumulative Targets'].max()
+    new_df['Lift'] = new_df['Gains']/new_df['percentiles']
+    new_df['KS'] = new_df['Gains'] - new_df['Non Target Gains']
+    return new_df
 
 def address_vif(X_values,vif_threshold=5):
     X_vals = add_constant(X_values)

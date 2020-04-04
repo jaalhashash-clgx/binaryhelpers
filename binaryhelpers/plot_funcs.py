@@ -170,18 +170,26 @@ def plot_precision_recall(y_actual,y_perc,add_avg = False,add_fill=False,ax=Fals
     else:
         return ax
     
-def plot_roc_curve(y_actual,y_perc,add_chance=True,add_fill=False,ax=False,**plot_kwargs):
-    roc_auc = roc_auc_score(y_actual,y_perc)
-    prec_rc = pd.concat([pd.Series(val) for val in roc_curve(y_actual,y_perc)],axis=1)
-    prec_rc.columns = ['False Positive rate','True Positive Rate','threshold']
-    if prec_rc.shape[0]>100000:
-        plot_data = prec_rc.iloc[::1000, :]
-    elif prec_rc.shape[0]>5000:
-        plot_data = prec_rc.iloc[::100, :]
+def plot_roc_curve(y_actual,y_perc,add_chance=True,add_fill=False,ax=False,use_scores=True,**plot_kwargs):
+    if use_scores:
+        roc_auc = roc_auc_score(y_actual,y_perc)
+        prec_rc = pd.concat([pd.Series(val) for val in roc_curve(y_actual,y_perc)],axis=1)
+        prec_rc.columns = ['False Positive rate','True Positive Rate','threshold']
+        if prec_rc.shape[0]>100000:
+            plot_data = prec_rc.iloc[::1000, :]
+        elif prec_rc.shape[0]>5000:
+            plot_data = prec_rc.iloc[::100, :]
+        else:
+            plot_data = prec_rc.iloc[::10, :]
     else:
-        plot_data = prec_rc.iloc[::10, :]
+        roc_auc = auc(y_actual,y_perc)
+        plot_data = pd.concat([y_actual,y_perc],axis=1)
+        plot_data.columns = ['False Positive rate','True Positive Rate']
     if not ax:
+        needs_ax=True
         fig, ax = plt.subplots(figsize=(10,10))
+    else:
+        needs_ax=False
     sns.lineplot(x='False Positive rate',y='True Positive Rate',data=plot_data,ax=ax,**plot_kwargs)
     ax.set_title("ROC Curve:  AUC = {0:0.3f}".format(roc_auc),fontsize=20)
     ax.set_xlim(0,1)
@@ -191,7 +199,7 @@ def plot_roc_curve(y_actual,y_perc,add_chance=True,add_fill=False,ax=False,**plo
     if add_chance:
         ax.plot([0, 1], [0, 1], linestyle='--', lw=2, color='r',
          label='Chance', alpha=.8)
-    if not ax:
+    if needs_ax:
         return fig,ax
     else:
         return ax
