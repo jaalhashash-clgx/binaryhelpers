@@ -170,7 +170,7 @@ def plot_precision_recall(y_actual,y_perc,add_avg = False,add_fill=False,ax=Fals
     else:
         return ax
     
-def plot_roc_curve(y_actual,y_perc,add_chance=True,add_fill=False,ax=False,use_scores=True,**plot_kwargs):
+def plot_roc_curve(y_actual,y_perc,add_chance=True,add_fill=False,ax=False,use_scores=True,facetwrap=False,**plot_kwargs):
     if use_scores:
         roc_auc = roc_auc_score(y_actual,y_perc)
         prec_rc = pd.concat([pd.Series(val) for val in roc_curve(y_actual,y_perc)],axis=1)
@@ -185,12 +185,15 @@ def plot_roc_curve(y_actual,y_perc,add_chance=True,add_fill=False,ax=False,use_s
         roc_auc = auc(y_actual,y_perc)
         plot_data = pd.concat([y_actual,y_perc],axis=1)
         plot_data.columns = ['False Positive rate','True Positive Rate']
-    if not ax:
+    if not ax and not facetwrap:
         needs_ax=True
         fig, ax = plt.subplots(figsize=(10,10))
     else:
         needs_ax=False
-    sns.lineplot(x='False Positive rate',y='True Positive Rate',data=plot_data,ax=ax,**plot_kwargs)
+    if not facetwrap:
+        sns.lineplot(x='False Positive rate',y='True Positive Rate',data=plot_data,ax=ax,**plot_kwargs)
+    else:
+        ax = sns.lineplot(x='False Positive rate',y='True Positive Rate',data=plot_data,**plot_kwargs)
     ax.set_title("ROC Curve:  AUC = {0:0.3f}".format(roc_auc),fontsize=20)
     ax.set_xlim(0,1)
     ax.set_ylim(0,1)
@@ -199,12 +202,14 @@ def plot_roc_curve(y_actual,y_perc,add_chance=True,add_fill=False,ax=False,use_s
     if add_chance:
         ax.plot([0, 1], [0, 1], linestyle='--', lw=2, color='r',
          label='Chance', alpha=.8)
+    if facetwrap:
+        return ax
     if needs_ax:
         return fig,ax
     else:
         return ax
     
-def plot_perc_lift(y_actual,y_perc,use_scores=False,split_num=False,add_baseline = False,ax=False,**plot_kwargs):
+def plot_perc_lift(y_actual,y_perc,use_scores=False,split_num=False,add_baseline = False,ax=False,add_label=True,label_val=.1,facetwrap=False,**plot_kwargs):
     if use_scores:
         base_perc = y_actual.mean()
         df = pd.concat([y_actual,y_perc],axis=1)
@@ -223,9 +228,17 @@ def plot_perc_lift(y_actual,y_perc,use_scores=False,split_num=False,add_baseline
     else:
         perc = y_actual
         lifts = y_perc
-    if not ax:
+    if add_label:
+        for percentile,lift in zip(perc,lifts):
+            if round(percentile,1)==label_val and round(percentile,2)>=label_val:
+                break
+        lift_at_10 = lift
+        plot_kwargs['label'] = "Lift At {}%: {:,.3f}".format(int(label_val*100),lift_at_10)
+    if not ax and not facetwrap:
         fig, ax = plt.subplots(figsize=(10,10))     
-    sns.lineplot(x=perc,y=lifts,ax=ax,**plot_kwargs)
+        sns.lineplot(x=perc,y=lifts,ax=ax,**plot_kwargs)
+    else:
+        ax = sns.lineplot(x=perc,y=lifts,**plot_kwargs)
     if add_baseline:
         ax.axhline(1,linestyle='--', color = 'red',alpha=.75)
     ax.set_xlim(0,1)
@@ -236,11 +249,13 @@ def plot_perc_lift(y_actual,y_perc,use_scores=False,split_num=False,add_baseline
     ax.set_title("Lift Chart",fontsize=20)
     vals = ax.get_xticks()
     ax.set_xticklabels(["{:,.0%}".format(x) for x in vals])
+    if facetwrap:
+        return ax
     if not ax:
         return fig,ax
     else:
         return ax
-def plot_cum_gains(y_actual,y_perc,cum_perc=False,add_thresh=False,ax=None,return_auc=True,title = "Model Performance: Cumulative Gains",div=1000,add_chance = True,**kwargs):
+def plot_cum_gains(y_actual,y_perc,cum_perc=False,add_thresh=False,ax=None,return_auc=True,title = "Model Performance: Cumulative Gains",div=1000,add_chance = True,facetwrap=False,**kwargs):
     if not cum_perc:
         data = pd.concat([y_actual,y_perc],axis=1)
         data.columns = ['y_actual','y_perc']
@@ -256,12 +271,16 @@ def plot_cum_gains(y_actual,y_perc,cum_perc=False,add_thresh=False,ax=None,retur
     formatter = FuncFormatter(lambda y, pos:"%d%%" % (y*100))
     if return_auc:
         auc_score = auc(target_data['PERC_TOTAL'],target_data['CUM_PERC'])
-    if not ax:
+        kwargs['label'] = "AUC={:,.3f}".format(auc_score)
+    if not ax and not facetwrap:
         needs_ax = True
         fig,ax = plt.subplots(figsize=(15,15))
     else:
         needs_ax = False
-    sns.lineplot(x='PERC_TOTAL',y='CUM_PERC',data=target_data.iloc[::div, :],ax=ax,**kwargs)
+    if facetwrap:
+        ax = sns.lineplot(x='PERC_TOTAL',y='CUM_PERC',data=target_data.iloc[::div, :],**kwargs)
+    else:
+        sns.lineplot(x='PERC_TOTAL',y='CUM_PERC',data=target_data.iloc[::div, :],ax=ax,**kwargs)
     ax.yaxis.set_major_formatter(formatter)
     ax.xaxis.set_major_formatter(formatter)
     if add_thresh:
@@ -300,7 +319,8 @@ def plot_cum_gains(y_actual,y_perc,cum_perc=False,add_thresh=False,ax=None,retur
                 tick.label1.set_fontsize(20)
                 tick.label1.set_fontweight('bold')
             i+=1
-
+    if facetwrap:
+        return ax
     if needs_ax:
         if return_auc:
             return fig,ax,auc_score
