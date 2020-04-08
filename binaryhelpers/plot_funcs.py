@@ -289,10 +289,10 @@ def plot_cum_gains(y_actual,y_perc,cum_perc=False,add_thresh=False,ax=None,retur
 
     xticks =list((np.arange(10)+1)/4)
     
-    if add_thresh:
+    if add_thresh and not facetwrap:
         xticks = sorted(set(xticks+add_thresh))
     ax.set_xticks(xticks)
-    if add_thresh:
+    if add_thresh and not facetwrap:
         ticks = sorted([.25,.5]+threshes)
         ax.set_yticks(ticks)
     else:
@@ -313,12 +313,15 @@ def plot_cum_gains(y_actual,y_perc,cum_perc=False,add_thresh=False,ax=None,retur
         for x,y in zip(add_thresh,threshes):
             ax.axvline(x,0,y,linestyle='--',linewidth=2,color='orange')
             ax.axhline(y,0,x,linestyle='--',linewidth=2,color='orange')
-        i=0
-        for tick in ax.yaxis.get_major_ticks():
-            if ticks[i] in threshes:
-                tick.label1.set_fontsize(20)
-                tick.label1.set_fontweight('bold')
-            i+=1
+        if facetwrap:
+            ax.text(x,y+.05,"{:.0f}% captured at {:.0f}%".format(y*100,x*100),weight='semibold',wrap=True)
+        else:
+            i=0
+            for tick in ax.yaxis.get_major_ticks():
+                if ticks[i] in threshes:
+                    tick.label1.set_fontsize(20)
+                    tick.label1.set_fontweight('bold')
+                i+=1
     if facetwrap:
         return ax
     if needs_ax:
