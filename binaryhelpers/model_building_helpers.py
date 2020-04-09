@@ -504,11 +504,11 @@ def add_bin_col(data, col, bins=5):
 def create_lift_gains(data,pred,target,split=100,labels=False,**cut_kwargs):
     if isinstance(split,list):
         if not labels:
-            data['split'] = pd.cut(data[pred],bins=split,right=False,include_lowest=True,duplicates='drop',**cut_kwargs)
+            data['split'] = pd.cut(data[pred],bins=split,right=False,include_lowest=True,**cut_kwargs)
         else:
-            data['split'] = pd.cut(data[pred],bins=split,labels=labels,right=False,include_lowest=True,duplicates='drop',**cut_kwargs)
+            data['split'] = pd.cut(data[pred],bins=split,labels=labels,right=False,include_lowest=True,**cut_kwargs)
     else:
-        data['split'] = pd.qcut(data[pred],split)
+        data['split'] = pd.qcut(data[pred],split,duplicates='drop',**cut_kwargs)
     new_df = data.groupby('split').agg({target:['sum','count']})
     new_df.columns = ['_'.join(x) for x in new_df.columns.ravel()]
     new_df.columns = ['N Targets', 'N Obs']
