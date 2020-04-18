@@ -235,7 +235,11 @@ def plot_perc_lift(y_actual,y_perc,use_scores=False,split_num=False,add_baseline
         lift_at_10 = lift
         plot_kwargs['label'] = "Lift At {}%: {:,.3f}".format(int(label_val*100),lift_at_10)
     if not ax and not facetwrap:
-        fig, ax = plt.subplots(figsize=(10,10))     
+        needs_ax = True
+        fig,ax = plt.subplots(figsize=(10,10))
+    else:
+        needs_ax = False
+    if not facetwrap:
         sns.lineplot(x=perc,y=lifts,ax=ax,**plot_kwargs)
     else:
         ax = sns.lineplot(x=perc,y=lifts,**plot_kwargs)
@@ -251,7 +255,7 @@ def plot_perc_lift(y_actual,y_perc,use_scores=False,split_num=False,add_baseline
     ax.set_xticklabels(["{:,.0%}".format(x) for x in vals])
     if facetwrap:
         return ax
-    if not ax:
+    if needs_ax:
         return fig,ax
     else:
         return ax
