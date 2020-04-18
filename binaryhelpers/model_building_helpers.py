@@ -224,9 +224,6 @@ def model_scores(y_val,X_val,classifier,curve_func = create_lift_gains, folds=5,
     predictions = np.array(get_scores(X_val,y_val,classifier,folds))
     solutions_pred = pd.DataFrame(np.stack([np.array(y_val),predictions[:,1]],axis=1),columns = ['y_actual','y_perc'])
     final_df = curve_func(solutions_pred, 'y_perc','y_actual')
-    final_df['inspection_cost'] = np.multiply(final_df['inspections'],insp_cost)
-    final_df['loss_avoidance'] = np.multiply(final_df['hazards'],loss_avoidance)
-    final_df['value'] = final_df['loss_avoidance']-final_df['inspection_cost']
     if not return_solutions:
         return final_df
     else:
