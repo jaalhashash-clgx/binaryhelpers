@@ -178,7 +178,7 @@ def add_dummies(df, dummies_list = ['CONSTRUCTIONTYPE', 'ROOFCOVERTYPE', 'DWELLI
         df.drop(col, axis = 1, inplace = True)
     return df
 
-def create_ar_curve(data,results_rows=101, output_var="model_output",target_var="Inspectiontarget"):
+def create_ar_curve(data,output_var="model_output",target_var="Inspectiontarget",results_rows=101, ):
     increment = 1/(results_rows-1)
     results = pd.DataFrame(columns = ['percentile_from','percentile_to','score_from','score_to','hazards','inspections','precision','lift'])
     results['percentile_from'] = np.arange(0,1,increment)
@@ -196,10 +196,10 @@ def create_ar_curve(data,results_rows=101, output_var="model_output",target_var=
     
     # results = results.applymap(lambda x: np.round(x,3))
     return results
-def model_scores(y_val,X_val,classifier,folds=5,insp_cost=30, loss_avoidance=350, return_solutions = False,fit_params={}):
+def model_scores(y_val,X_val,classifier,curve_func = create_lift_gains, folds=5,insp_cost=30, loss_avoidance=350, return_solutions = False,fit_params={}):
     predictions = np.array(get_scores(X_val,y_val,classifier,folds))
     solutions_pred = pd.DataFrame(np.stack([np.array(y_val),predictions[:,1]],axis=1),columns = ['y_actual','y_perc'])
-    final_df = create_ar_curve(solutions_pred, output_var = 'y_perc', target_var = 'y_actual')
+    final_df = curve_func(solutions_pred, 'y_perc','y_actual')
     final_df['inspection_cost'] = np.multiply(final_df['inspections'],insp_cost)
     final_df['loss_avoidance'] = np.multiply(final_df['hazards'],loss_avoidance)
     final_df['value'] = final_df['loss_avoidance']-final_df['inspection_cost']
@@ -560,13 +560,13 @@ def get_scores(X,y,ordered_models,splitter):
     scores = []
     for train_index,test_index in splitter.split(X,y):
         model = ordered_models[i]
-        score = pd.DataFrame(model.predict_proba(X.loc[test_index]),columns = np.unique(y))
+        score = pd.DataFrame(model.predict_proba(X.iloc[test_index]))
       
         score.index = test_index
         scores.append(score)
         i+=1
     finals = pd.concat(scores)
-    finals['pred'] = [np.unique(y)[x] for x in finals.values.argmax(axis=1)]
+    #finals['pred'] = [np.unique(y)[x] for x in finals.values.argmax(axis=1)]
     return finals.sort_index()
 
 def get_perm_imp(X,y,ordered_models,splitter,scoring='roc_auc'):
