@@ -196,6 +196,30 @@ def create_ar_curve(data,output_var="model_output",target_var="Inspectiontarget"
     
     # results = results.applymap(lambda x: np.round(x,3))
     return results
+def create_lift_gains(data,pred,target,split=100,labels=False,**cut_kwargs):
+    if isinstance(split,list):
+        if not labels:
+            data['split'] = pd.cut(data[pred],bins=split,right=False,include_lowest=True,**cut_kwargs)
+        else:
+            data['split'] = pd.cut(data[pred],bins=split,labels=labels,right=False,include_lowest=True,**cut_kwargs)
+    else:
+        data['split'] = pd.qcut(data[pred],split,duplicates='drop',**cut_kwargs)
+    new_df = data.groupby('split').agg({target:['sum','count']})
+    new_df.columns = ['_'.join(x) for x in new_df.columns.ravel()]
+    new_df.columns = ['N Targets', 'N Obs']
+    new_df['Perc Targets'] = new_df['N Obs']/new_df['N Obs'].sum()
+    new_df.sort_index(ascending=False, inplace=True)
+    new_df['percentiles'] = new_df['Perc Targets'].cumsum()
+    new_df['Cumulative Obs'] = new_df['N Obs'].cumsum()
+    new_df['Cumulative Targets'] = new_df['N Targets'].cumsum()
+    new_df['Target Dist'] = new_df['N Targets']/new_df['N Obs']
+    new_df['Non Target Dist'] = 1 - new_df['Target Dist']
+    new_df['Non Target Gains'] = (new_df['N Obs']-new_df['N Targets']).cumsum()/(new_df['N Obs']-new_df['N Targets']).cumsum().max()
+    new_df['Gains'] = new_df['Cumulative Targets']/new_df['Cumulative Targets'].max()
+    new_df['Lift'] = new_df['Gains']/new_df['percentiles']
+    new_df['KS'] = new_df['Gains'] - new_df['Non Target Gains']
+    return new_df
+
 def model_scores(y_val,X_val,classifier,curve_func = create_lift_gains, folds=5,insp_cost=30, loss_avoidance=350, return_solutions = False,fit_params={}):
     predictions = np.array(get_scores(X_val,y_val,classifier,folds))
     solutions_pred = pd.DataFrame(np.stack([np.array(y_val),predictions[:,1]],axis=1),columns = ['y_actual','y_perc'])
@@ -499,31 +523,6 @@ def add_bin_col(data, col, bins=5):
         new_bin_data = pd.qcut(data[col], bins, labels=labels)
 
     return new_bin_data
-
-
-def create_lift_gains(data,pred,target,split=100,labels=False,**cut_kwargs):
-    if isinstance(split,list):
-        if not labels:
-            data['split'] = pd.cut(data[pred],bins=split,right=False,include_lowest=True,**cut_kwargs)
-        else:
-            data['split'] = pd.cut(data[pred],bins=split,labels=labels,right=False,include_lowest=True,**cut_kwargs)
-    else:
-        data['split'] = pd.qcut(data[pred],split,duplicates='drop',**cut_kwargs)
-    new_df = data.groupby('split').agg({target:['sum','count']})
-    new_df.columns = ['_'.join(x) for x in new_df.columns.ravel()]
-    new_df.columns = ['N Targets', 'N Obs']
-    new_df['Perc Targets'] = new_df['N Obs']/new_df['N Obs'].sum()
-    new_df.sort_index(ascending=False, inplace=True)
-    new_df['percentiles'] = new_df['Perc Targets'].cumsum()
-    new_df['Cumulative Obs'] = new_df['N Obs'].cumsum()
-    new_df['Cumulative Targets'] = new_df['N Targets'].cumsum()
-    new_df['Target Dist'] = new_df['N Targets']/new_df['N Obs']
-    new_df['Non Target Dist'] = 1 - new_df['Target Dist']
-    new_df['Non Target Gains'] = (new_df['N Obs']-new_df['N Targets']).cumsum()/(new_df['N Obs']-new_df['N Targets']).cumsum().max()
-    new_df['Gains'] = new_df['Cumulative Targets']/new_df['Cumulative Targets'].max()
-    new_df['Lift'] = new_df['Gains']/new_df['percentiles']
-    new_df['KS'] = new_df['Gains'] - new_df['Non Target Gains']
-    return new_df
 
 def address_vif(X_values,vif_threshold=5):
     X_vals = add_constant(X_values)
