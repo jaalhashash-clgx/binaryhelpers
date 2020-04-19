@@ -178,7 +178,7 @@ def add_dummies(df, dummies_list = ['CONSTRUCTIONTYPE', 'ROOFCOVERTYPE', 'DWELLI
         df.drop(col, axis = 1, inplace = True)
     return df
 
-def create_ar_curve(data,output_var="model_output",target_var="Inspectiontarget",results_rows=101, ):
+def create_ar_curve(data,output_var="model_output",target_var="Inspectiontarget",results_rows=101):
     increment = 1/(results_rows-1)
     results = pd.DataFrame(columns = ['percentile_from','percentile_to','score_from','score_to','hazards','inspections','precision','lift'])
     results['percentile_from'] = np.arange(0,1,increment)
@@ -197,6 +197,7 @@ def create_ar_curve(data,output_var="model_output",target_var="Inspectiontarget"
     # results = results.applymap(lambda x: np.round(x,3))
     return results
 def create_lift_gains(data,pred,target,split=100,labels=False,**cut_kwargs):
+    data = data.copy()
     if isinstance(split,list):
         if not labels:
             data['split'] = pd.cut(data[pred],bins=split,right=False,include_lowest=True,**cut_kwargs)
@@ -223,8 +224,8 @@ def create_lift_gains(data,pred,target,split=100,labels=False,**cut_kwargs):
 def model_scores(y_val,X_val,classifier,curve_func = create_lift_gains, folds=5,insp_cost=30, loss_avoidance=350, return_solutions = False,fit_params={}):
     predictions = np.array(get_scores(X_val,y_val,classifier,folds))
     solutions_pred = pd.DataFrame(np.stack([np.array(y_val),predictions[:,1]],axis=1),columns = ['y_actual','y_perc'])
-    final_df = curve_func(solutions_pred, 'y_perc','y_actual')
-    if not return_solutions:
+    final_df = curve_func(solutions_pred, 'y_perc','y_actual'
+)    if not return_solutions:
         return final_df
     else:
         return (final_df, solutions_pred)
