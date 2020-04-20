@@ -224,8 +224,8 @@ def create_lift_gains(data,pred,target,split=100,labels=False,**cut_kwargs):
 def model_scores(y_val,X_val,classifier,curve_func = create_lift_gains, folds=5,insp_cost=30, loss_avoidance=350, return_solutions = False,fit_params={}):
     predictions = np.array(get_scores(X_val,y_val,classifier,folds))
     solutions_pred = pd.DataFrame(np.stack([np.array(y_val),predictions[:,1]],axis=1),columns = ['y_actual','y_perc'])
-    final_df = curve_func(solutions_pred, 'y_perc','y_actual'
-)    if not return_solutions:
+    final_df = curve_func(solutions_pred, 'y_perc','y_actual')    
+    if not return_solutions:
         return final_df
     else:
         return (final_df, solutions_pred)
@@ -294,7 +294,7 @@ def analyze_insp_opt(data, y_var,X_vars,classifier,add_dummy_vars=True, return_s
     if verbose:
         print("Training Models with Cross Validation")
     if type(folds)==int:
-        folds = StratifiedKFold(n_splits=folds)
+        folds = StratifiedKFold(n_splits=folds,shuffle=True)
     if not isinstance(folds,BaseCrossValidator):
         raise TypeError("Folds must be of instance BaseCrossValidator")
 
