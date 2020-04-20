@@ -294,7 +294,7 @@ def analyze_insp_opt(data, y_var,X_vars,classifier,add_dummy_vars=True, return_s
     if verbose:
         print("Training Models with Cross Validation")
     if type(folds)==int:
-        folds = StratifiedKFold(n_splits=folds,shuffle=True)
+        folds = StratifiedKFold(n_splits=folds,shuffle=True,random_state=42)
     if not isinstance(folds,BaseCrossValidator):
         raise TypeError("Folds must be of instance BaseCrossValidator")
 
