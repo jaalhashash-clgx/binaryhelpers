@@ -466,7 +466,7 @@ def logit_analysis(data, target_var, predictor_vars, vif_threshold = 5, mapper =
     return_dict['high_vif_features'] = high_vif_dicts
     return return_dict
 
-def summarize_dist(data,field,target_field,thresh=0):
+def summarize_dist(data,field,target_field,thresh=0,add_woe=False):
     
     cols = ['{}_cnt'.format(str(field)),'{}_dist'.format(str(field)),'{}_cnt'.format(str(target_field)),'{}_dist'.format(str(target_field))]
     field_cnt = data[field].value_counts()
@@ -475,6 +475,11 @@ def summarize_dist(data,field,target_field,thresh=0):
     target_dist = target_cnt/field_cnt
     summarize_df = pd.concat([field_cnt,field_dist,target_cnt,target_dist],axis=1, sort=False)
     summarize_df.columns=cols
+    if add_woe:
+        summarize_df['perc_{}'.format(target_field)] = summarize_df['{}_cnt'.format(target_field)]/summarize_df['{}_cnt'.format(target_field)].sum()
+        summarize_df['perc_non_{}'.format(target_field)] = (summarize_df['{}_cnt'.format(field)]-test_woe['{}_cnt'.format(target_field)])/(summarize_df['{}_cnt'.format(field)]-test_woe['{}_cnt'.format(target_field)]).sum()
+        summarize_df['woe'] = np.log(summarize_df['perc_non_{}'.format(target_field)]/summarize_df['perc_{}'.format(target_field)])
+        summarize_df['IV'] = (summarize_df['perc_non_{}'.format(target_field)]-summarize_df['perc_{}'.format(target_field)])*summarize_df['woe']
     return summarize_df[summarize_df[cols[1]]>thresh]
 
 
