@@ -477,7 +477,7 @@ def summarize_dist(data,field,target_field,thresh=0,add_woe=False):
     summarize_df.columns=cols
     if add_woe:
         summarize_df['perc_{}'.format(target_field)] = summarize_df['{}_cnt'.format(target_field)]/summarize_df['{}_cnt'.format(target_field)].sum()
-        summarize_df['perc_non_{}'.format(target_field)] = (summarize_df['{}_cnt'.format(field)]-test_woe['{}_cnt'.format(target_field)])/(summarize_df['{}_cnt'.format(field)]-test_woe['{}_cnt'.format(target_field)]).sum()
+        summarize_df['perc_non_{}'.format(target_field)] = (summarize_df['{}_cnt'.format(field)]-summarize_df['{}_cnt'.format(target_field)])/(summarize_df['{}_cnt'.format(field)]-summarize_df['{}_cnt'.format(target_field)]).sum()
         summarize_df['woe'] = np.log(summarize_df['perc_non_{}'.format(target_field)]/summarize_df['perc_{}'.format(target_field)])
         summarize_df['IV'] = (summarize_df['perc_non_{}'.format(target_field)]-summarize_df['perc_{}'.format(target_field)])*summarize_df['woe']
     return summarize_df[summarize_df[cols[1]]>thresh]
