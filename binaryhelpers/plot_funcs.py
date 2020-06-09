@@ -201,7 +201,7 @@ def plot_roc_curve(y_actual,y_perc,add_chance=True,add_fill=False,ax=False,use_s
         ax.fill_between(plot_data['False Positive rate'],plot_data['True Positive Rate'],y2=plot_data['False Positive rate'],alpha=0.2)
     if add_chance:
         ax.plot([0, 1], [0, 1], linestyle='--', lw=2, color='r',
-         label='Chance', alpha=.8)
+         alpha=.8)
     if facetwrap:
         return ax
     if needs_ax:
@@ -287,8 +287,19 @@ def plot_cum_gains(y_actual,y_perc,cum_perc=False,add_thresh=False,ax=None,retur
         sns.lineplot(x='PERC_TOTAL',y='CUM_PERC',data=target_data.iloc[::div, :],ax=ax,**kwargs)
     ax.yaxis.set_major_formatter(formatter)
     ax.xaxis.set_major_formatter(formatter)
+    def get_thresh(thresh):
+    	got_thresh=False
+    	i=0
+    	got_thresh = (target_data['PERC_TOTAL'].round(2)==thresh).any()
+
+    	while not got_thresh and i <5:    			
+    		thresh-=.01
+    		got_thresh = (target_data['PERC_TOTAL'].round(2)==thresh).any()
+    		i+=1
+    	new_thresh = target_data[target_data['PERC_TOTAL'].round(2)==thresh]['CUM_PERC'].values.mean().round(2)
+    	return new_thresh
     if add_thresh:
-        threshes = [target_data[target_data['PERC_TOTAL'].round(2)==thresh]['CUM_PERC'].values.mean().round(2) for thresh in add_thresh]
+        threshes = [get_thresh(thresh) for thresh in add_thresh]
 
 
     xticks =list((np.arange(10)+1)/4)
