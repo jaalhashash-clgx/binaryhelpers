@@ -466,3 +466,41 @@ def look_at_models(data,target,score_list=None,plots_only=True,return_figs=False
             return agg_df
     else:
         return figs
+
+def plot_figs_from_dict(plot_dict,save_excel=False):
+
+    fig, ax = plt.subplots(figsize=(10,10))
+    fig2,ax2 = plt.subplots(figsize=(10,10))
+    fig3,ax3 = plt.subplots(figsize=(10,10))
+    if save_excel:
+        writer = pd.ExcelWriter(save_excel)
+    for key,value in plot_dict.items():
+        plot_roc_curve(value['Non Target Gains'],value['Gains'],use_scores=False,ax=ax,label="{0} AUC = {1:0.3f}".format(key,auc(value['Non Target Gains'],value['Gains'])))
+        plot_perc_lift(value['percentiles'],value['Lift'],ax=ax2)
+        plot_cum_gains(value['percentiles'],value['Gains'],ax=ax3,cum_perc=True, return_auc=False,label="{0} AUC = {1:0.3f}".format(key,auc(value['percentiles'],value['Gains'])))
+        if save_excel:
+            value.to_excel(writer,sheet_name = key)
+    ax.set_title('ROC Curve Model Comparison')
+    def fix_handles(ax):
+        handles, labels = ax.get_legend_handles_labels()
+        i=0
+        new_handles=[]
+        new_labels=[]
+        for handle, label in zip(handles,labels):
+            if label =='Chance' and i != len(handles)-1:
+                pass
+            else:
+                new_handles.append(handle)
+                new_labels.append(label)
+            i+=1
+        ax.legend(new_handles,new_labels)
+    fix_handles(ax)
+    fix_handles(ax3)
+    handles, labels = ax2.get_legend_handles_labels()
+    new_labels=[]
+    for key, label in zip(plot_dict.keys(),labels):
+        new_labels.append("{}: {}".format(key,label))
+    ax2.legend(handles,new_labels)
+    if save_excel:
+        writer.save()
+    return fig, fig2, fig3
